@@ -4,11 +4,10 @@
    palette). */
 
 
-#include <windows.h>			/* must include this before GL/gl.h */
+#include <windows.h>		/* must include this before GL/gl.h */
 #include <GL/gl.h>			/* OpenGL header file */
 #include <GL/glu.h>			/* OpenGL utilities header file */
 #include <stdio.h>
-
 
 void
 display()
@@ -55,6 +54,10 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_CLOSE:
 	PostQuitMessage(0);
 	return 0;
+
+    case WM_LBUTTONDOWN:
+    MessageBox(hWnd, glGetString(GL_VERSION), "OpenGL version", MB_OK);
+    return 0;
     }
 
     return DefWindowProc(hWnd, uMsg, wParam, lParam); 
@@ -128,7 +131,7 @@ CreateOpenGLWindow(char* title, int x, int y, int width, int height,
 
     DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
 
-    ReleaseDC(hDC, hWnd);
+    ReleaseDC(hWnd, hDC);
 
     return hWnd;
 }    
@@ -137,10 +140,10 @@ int APIENTRY
 WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
 	LPSTR lpszCmdLine, int nCmdShow)
 {
-    HDC hDC;				/* device context */
-    HGLRC hRC;				/* opengl context */
-    HWND  hWnd;				/* window */
-    MSG   msg;				/* message */
+    HDC     hDC;				/* device context */
+    HGLRC   hRC;				/* opengl context */
+    HWND    hWnd;				/* window */
+    MSG     msg;				/* message */
 
     hWnd = CreateOpenGLWindow("minimal", 0, 0, 256, 256, PFD_TYPE_RGBA, 0);
     if (hWnd == NULL)
@@ -158,7 +161,7 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
     }
 
     wglMakeCurrent(NULL, NULL);
-    ReleaseDC(hDC, hWnd);
+    ReleaseDC(hWnd, hDC);
     wglDeleteContext(hRC);
     DestroyWindow(hWnd);
 
