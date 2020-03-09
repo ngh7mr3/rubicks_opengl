@@ -6,21 +6,22 @@
 
 #include <windows.h>		/* must include this before GL/gl.h */
 #include <GL/gl.h>			/* OpenGL header file */
-#include <GL/glu.h>			/* OpenGL utilities header file */
+#include <GL/glu.h>
+#include <GL/glaux.h>			/* OpenGL utilities header file */
 #include <stdio.h>
 
 void
 display()
 {
-    /* rotate a triangle around */
-    glClear(GL_COLOR_BUFFER_BIT);
-    glBegin(GL_TRIANGLES);
-    glColor3f(1.0f, 0.0f, 0.0f);
-    glVertex2i(0,  1);
-    glColor3f(0.0f, 1.0f, 0.0f);
-    glVertex2i(-1, -1);
-    glColor3f(0.0f, 0.0f, 1.0f);
-    glVertex2i(1, -1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glBegin(GL_LINE_LOOP);
+
+    // glColor3f(1.0f, 0.0f, 0.0f);
+    // glVertex2i(0,  1);
+    // glColor3f(0.0f, 1.0f, 0.0f);
+    // glVertex2i(-1, -1);
+    // glColor3f(0.0f, 0.0f, 1.0f);
+    // glVertex2i(1, -1);
     glEnd();
     glFlush();
 }
@@ -32,32 +33,38 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     static PAINTSTRUCT ps;
 
     switch(uMsg) {
-    case WM_PAINT:
-	display();
-	BeginPaint(hWnd, &ps);
-	EndPaint(hWnd, &ps);
-	return 0;
-
-    case WM_SIZE:
-	glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
-	PostMessage(hWnd, WM_PAINT, 0, 0);
-	return 0;
-
-    case WM_CHAR:
-	switch (wParam) {
-	case 27:			/* ESC key */
-	    PostQuitMessage(0);
-	    break;
-	}
-	return 0;
-
-    case WM_CLOSE:
-	PostQuitMessage(0);
-	return 0;
-
-    case WM_LBUTTONDOWN:
-    MessageBox(hWnd, glGetString(GL_VERSION), "OpenGL version", MB_OK);
-    return 0;
+        case WM_DESTROY:
+        {
+            PostQuitMessage(0);
+            return 0;
+        }
+        case WM_PAINT:
+        {
+            display();
+            BeginPaint(hWnd, &ps);
+            EndPaint(hWnd, &ps);
+            return 0;
+        }
+        case WM_SIZE:
+        {
+            glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+            PostMessage(hWnd, WM_PAINT, 0, 0);
+            return 0;
+        }
+        case WM_CHAR:
+        {
+            switch (wParam) {
+                case 27:			/* ESC key */
+                    PostQuitMessage(0);
+                    return 0;
+            }
+            return 0;
+        }
+        case WM_LBUTTONDOWN:
+        {
+            MessageBox(hWnd, glGetString(GL_VERSION), "OpenGL version", MB_OK);
+            return 0;
+        }
     }
 
     return DefWindowProc(hWnd, uMsg, wParam, lParam); 
