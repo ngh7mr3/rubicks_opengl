@@ -40,7 +40,9 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         case WM_PAINT:
         {
-            display();
+            WINDOWINFO winInf;
+            GetWindowInfo(hWnd, &winInf);
+            display(winInf.rcWindow);
             BeginPaint(hWnd, &ps);
             EndPaint(hWnd, &ps);
             return 0;
@@ -48,6 +50,11 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_SIZE:
         {
             glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+            glMatrixMode(GL_PROJECTION);
+            glLoadIdentity();
+            glOrtho(0, LOWORD(lParam), 0, HIWORD(wParam), -1.0, -1.0);
+            glMatrixMode(GL_MODELVIEW);
+            glLoadIdentity();
             PostMessage(hWnd, WM_PAINT, 0, 0);
             return 0;
         }
