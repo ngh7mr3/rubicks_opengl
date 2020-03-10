@@ -10,18 +10,27 @@
 #include <GL/glaux.h>			/* OpenGL utilities header file */
 #include <stdio.h>
 
-void
-display()
-{
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glBegin(GL_LINE_LOOP);
+int winWidth    = 0;
+int winHeight   = 0;
+const float CUBESIZE = 300.0f;
 
-    // glColor3f(1.0f, 0.0f, 0.0f);
-    // glVertex2i(0,  1);
-    // glColor3f(0.0f, 1.0f, 0.0f);
-    // glVertex2i(-1, -1);
-    // glColor3f(0.0f, 0.0f, 1.0f);
-    // glVertex2i(1, -1);
+void display()
+{
+    float left    = ((winWidth - CUBESIZE)/2)/winWidth;
+    float right   = left + CUBESIZE/winWidth;
+    float bottom  = ((winHeight - CUBESIZE)/2)/winHeight;
+    float top     = bottom + CUBESIZE/winHeight;
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glBegin(GL_QUADS);
+    glColor3d(0.0, 1.0, 0.0);
+    glVertex2f(left, bottom);
+    glColor3d(0.0, 1.0, 1.0);
+    glVertex2f(left, top);
+    glColor3d(0.0, 0.0, 1.0);
+    glVertex2f(right, top);
+    glColor3d(1.0, 0.0, 1.0);
+    glVertex2f(right, bottom);
     glEnd();
     glFlush();
 }
@@ -40,19 +49,20 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         case WM_PAINT:
         {
-            WINDOWINFO winInf;
-            GetWindowInfo(hWnd, &winInf);
-            display(winInf.rcWindow);
+            display();
             BeginPaint(hWnd, &ps);
             EndPaint(hWnd, &ps);
             return 0;
         }
         case WM_SIZE:
         {
+            fprintf(stderr, "Resizing: width %dpx, height %dpx\n", LOWORD(lParam), HIWORD(lParam));
+            winWidth = LOWORD(lParam);
+            winHeight = HIWORD(lParam);
             glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
             glMatrixMode(GL_PROJECTION);
             glLoadIdentity();
-            glOrtho(0, LOWORD(lParam), 0, HIWORD(wParam), -1.0, -1.0);
+            glOrtho(0, LOWORD(lParam), 0, HIWORD(wParam), -1.0, 1.0);
             glMatrixMode(GL_MODELVIEW);
             glLoadIdentity();
             PostMessage(hWnd, WM_PAINT, 0, 0);
@@ -77,8 +87,7 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd, uMsg, wParam, lParam); 
 } 
 
-HWND
-CreateOpenGLWindow(char* title, int x, int y, int width, int height, 
+HWND CreateOpenGLWindow(char* title, int x, int y, int width, int height, 
 		   BYTE type, DWORD flags)
 {
     int         pf;
@@ -159,7 +168,10 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
     HWND    hWnd;				/* window */
     MSG     msg;				/* message */
 
-    hWnd = CreateOpenGLWindow("minimal", 0, 0, 256, 256, PFD_TYPE_RGBA, 0);
+    winWidth    = 512;
+    winHeight   = 512;
+
+    hWnd = CreateOpenGLWindow("minimal", 500, 500, winWidth, winHeight, PFD_TYPE_RGBA, 0);
     if (hWnd == NULL)
 	exit(1);
 
