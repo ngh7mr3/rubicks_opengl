@@ -99,23 +99,23 @@ HWND CreateOpenGLWindow(char* title, int x, int y, int width, int height,
 
     /* only register the window class once - use hInstance as a flag. */
     if (!hInstance) {
-	hInstance = GetModuleHandle(NULL);
-	wc.style         = CS_OWNDC;
-	wc.lpfnWndProc   = (WNDPROC)WindowProc;
-	wc.cbClsExtra    = 0;
-	wc.cbWndExtra    = 0;
-	wc.hInstance     = hInstance;
-	wc.hIcon         = LoadIcon(NULL, IDI_WINLOGO);
-	wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
-	wc.hbrBackground = NULL;
-	wc.lpszMenuName  = NULL;
-	wc.lpszClassName = "OpenGL";
+        hInstance = GetModuleHandle(NULL);
+        wc.style         = CS_OWNDC;
+        wc.lpfnWndProc   = (WNDPROC)WindowProc;
+        wc.cbClsExtra    = 0;
+        wc.cbWndExtra    = 0;
+        wc.hInstance     = hInstance;
+        wc.hIcon         = LoadIcon(NULL, IDI_WINLOGO);
+        wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+        wc.hbrBackground = NULL;
+        wc.lpszMenuName  = NULL;
+        wc.lpszClassName = "OpenGL";
 
-	if (!RegisterClass(&wc)) {
-	    MessageBox(NULL, "RegisterClass() failed:  "
-		       "Cannot register window class.", "Error", MB_OK);
-	    return NULL;
-	}
+        if (!RegisterClass(&wc)) {
+            MessageBox(NULL, "RegisterClass() failed:  "
+                "Cannot register window class.", "Error", MB_OK);
+            return NULL;
+        }
     }
 
     hWnd = CreateWindow("OpenGL", title, WS_OVERLAPPEDWINDOW |
@@ -182,8 +182,8 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
     ShowWindow(hWnd, nCmdShow);
 
     while(GetMessage(&msg, hWnd, 0, 0)) {
-	TranslateMessage(&msg);
-	DispatchMessage(&msg);
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
 
     wglMakeCurrent(NULL, NULL);
