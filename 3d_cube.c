@@ -15,12 +15,26 @@ enum {
     ZOOM				/* zoom state bit */
 };
 
+// front clockwise
+// back clockwise
+GLint CUBE[8][3] = {{1,-1,1},{1,1,1},{1,1,-1},{1,-1,-1},
+						{-1,-1,1},{-1,1,1},{-1,1,-1},{-1,-1,-1}};
+#define unpack(x) x[0],x[1],x[2]
 
-HDC hDC;				/* device context */
-HPALETTE hPalette = 0;			/* custom palette (if needed) */
+HDC hDC;					/* device context */
+HPALETTE hPalette = 0;		/* custom palette (if needed) */
 GLfloat trans[3];			/* current translation */
 GLfloat rot[2];				/* current rotation */
 
+void drawCubeSide(GLint* a, GLint* b, GLint* c, GLint* d) {
+	glBegin(GL_TRIANGLE_STRIP);
+		glColor3f(0.0f, 1.0f, 0.0f);
+		glVertex3i(unpack(a));
+		glVertex3i(unpack(b));
+		glVertex3i(unpack(d));
+		glVertex3i(unpack(c));
+	glEnd();
+}
 
 static void update(int state, int ox, int nx, int oy, int ny)
 {
@@ -67,19 +81,20 @@ reshape(int width, int height)
 void
 display()
 {
-    /* rotate a triangle around */
+    /* rotate a trian*/
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glPushMatrix();
     glTranslatef(trans[0], trans[1], trans[2]);
     glRotatef(rot[0], 1.0f, 0.0f, 0.0f);
     glRotatef(rot[1], 0.0f, 1.0f, 0.0f);
+	/*
     glBegin(GL_TRIANGLES);
 
 #define TOP glIndexi(1); glColor3f(1.0f, 0.0f, 0.0f); glVertex3i(0, 1, 0)
-#define FR  glIndexi(2); glColor3f(0.0f, 1.0f, 0.0f); glVertex3i(1, -1, 1)
-#define FL  glIndexi(3); glColor3f(0.0f, 0.0f, 1.0f); glVertex3i(-1, -1, 1)
-#define BR  glIndexi(3); glColor3f(0.0f, 0.0f, 1.0f); glVertex3i(1, -1, -1)
-#define BL  glIndexi(2); glColor3f(0.0f, 1.0f, 0.0f); glVertex3i(-1, -1, -1)
+#define FR  glIndexi(2); glColor3f(1.0f, 1.0f, 0.0f); glVertex3i(1, -1, 1)
+#define FL  glIndexi(3); glColor3f(0.0f, 1.0f, 0.0f); glVertex3i(-1, -1, 1)
+#define BR  glIndexi(3); glColor3f(0.0f, 1.0f, 1.0f); glVertex3i(1, -1, -1)
+#define BL  glIndexi(2); glColor3f(0.0f, 0.0f, 1.0f); glVertex3i(-1, -1, -1)
 
     TOP; FL; FR;
     TOP; FR; BR;
@@ -88,7 +103,8 @@ display()
     FR; FL; BL;
     BL; BR; FR;
     
-    glEnd();
+    glEnd(); */
+	drawCubeSide(CUBE[0], CUBE[1], CUBE[2], CUBE[3]);
     glPopMatrix();
     glFlush();
     SwapBuffers(hDC);			/* nop if singlebuffered */
