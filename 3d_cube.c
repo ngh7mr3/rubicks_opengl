@@ -1,9 +1,4 @@
-
-/* An example of processing mouse events in an OpenGL program using
-   the Win32 API. */
-
-
-#include <windows.h>			/* must include this before GL/gl.h */
+#include <windows.h>		/* must include this before GL/gl.h */
 #include <GL/gl.h>			/* OpenGL header file */
 #include <GL/glu.h>			/* OpenGL utilities header file */
 #include <stdio.h>
@@ -14,7 +9,7 @@
 #define clamp(x) x = x > 360.0f ? x-360.0f : x < -360.0f ? x+=360.0f : x
 
 enum { 
-    PAN = 1,				/* pan state bit */
+    PAN = 1,			/* pan state bit */
     ROTATE,				/* rotate state bits */
     ZOOM				/* zoom state bit */
 };
@@ -139,87 +134,97 @@ LONG WINAPI
 WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 { 
     static PAINTSTRUCT ps;
-    static GLboolean left  = GL_FALSE;	/* left button currently down? */
+    static GLboolean left = GL_FALSE;	/* left button currently down? */
     static GLboolean right = GL_FALSE;	/* right button currently down? */
-    static GLuint    state   = 0;	/* mouse state flag */
+	static GLboolean animate = GL_FALSE;/* animate flag */
+    static GLuint state = 0;			/* mouse state flag */
     static int omx, omy, mx, my;
 
     switch(uMsg) {
-    case WM_PAINT:
-	display();
-	BeginPaint(hWnd, &ps);
-	EndPaint(hWnd, &ps);
-	return 0;
+		case WM_PAINT:
+			display();
+			BeginPaint(hWnd, &ps);
+			EndPaint(hWnd, &ps);
+			return 0;
 
-    case WM_SIZE:
-	reshape(LOWORD(lParam), HIWORD(lParam));
-	PostMessage(hWnd, WM_PAINT, 0, 0);
-	return 0;
+		case WM_SIZE:
+			reshape(LOWORD(lParam), HIWORD(lParam));
+			PostMessage(hWnd, WM_PAINT, 0, 0);
+			return 0;
 
-    case WM_CHAR:
-	switch (wParam) {
-	case 27:			/* ESC key */
-	    PostQuitMessage(0);
-	    break;
+		case WM_CHAR:
+			printf("You've pressed char %d\n", (int)wParam);
+			switch (wParam) {
+				case 27:			/* ESC key */
+					PostQuitMessage(0);
+					break;
+				case 32:
+					animate ^= GL_TRUE;
+			}
+			return 0;
+
+		case WM_LBUTTONDOWN:
+		case WM_RBUTTONDOWN:
+			/* if we don't set the capture we won't get mouse move
+				messages when the mouse moves outside the window. */
+			SetCapture(hWnd);
+			mx = LOWORD(lParam);
+			my = HIWORD(lParam);
+			if (uMsg == WM_LBUTTONDOWN)
+				state |= PAN;
+			if (uMsg == WM_RBUTTONDOWN)
+				state |= ROTATE;
+			return 0;
+
+		case WM_LBUTTONUP:
+		case WM_RBUTTONUP:
+			/* remember to release the capture when we are finished. */
+			ReleaseCapture();
+			state = 0;
+			return 0;
+
+		case WM_MOUSEMOVE:
+			if (state) {
+				omx = mx;
+				omy = my;
+				mx = LOWORD(lParam);
+				my = HIWORD(lParam);
+				/* Win32 is pretty braindead about the x, y position that
+				it returns when the mouse is off the left or top edge
+				of the window (due to them being unsigned). therefore,
+				roll the Win32's 0..2^16 pointer co-ord range to the
+				more amenable (and useful) 0..+/-2^15. */
+				if(mx & 1 << 15) mx -= (1 << 16);
+				if(my & 1 << 15) my -= (1 << 16);
+				update(state, omx, mx, omy, my);
+				PostMessage(hWnd, WM_PAINT, 0, 0);
+			}
+			return 0;
+
+		case WM_PALETTECHANGED:
+			if (hWnd == (HWND)wParam)
+				break;
+		/* fall through to WM_QUERYNEWPALETTE */
+
+		case WM_QUERYNEWPALETTE:
+			if (hPalette) {
+				UnrealizeObject(hPalette);
+				SelectPalette(hDC, hPalette, FALSE);
+				RealizePalette(hDC);
+				return TRUE;
+			}
+			return FALSE;
+
+		case WM_CLOSE:
+			PostQuitMessage(0);
+			return 0;
+		
+		default:
+			if (animate) {
+				update(ROTATE, 2, 1, 5, 1);
+				PostMessage(hWnd, WM_PAINT, 0, 0);
+			}
 	}
-	return 0;
-
-    case WM_LBUTTONDOWN:
-    case WM_RBUTTONDOWN:
-	/* if we don't set the capture we won't get mouse move
-           messages when the mouse moves outside the window. */
-	SetCapture(hWnd);
-	mx = LOWORD(lParam);
-	my = HIWORD(lParam);
-	if (uMsg == WM_LBUTTONDOWN)
-	    state |= PAN;
-	if (uMsg == WM_RBUTTONDOWN)
-	    state |= ROTATE;
-	return 0;
-
-    case WM_LBUTTONUP:
-    case WM_RBUTTONUP:
-	/* remember to release the capture when we are finished. */
-	ReleaseCapture();
-	state = 0;
-	return 0;
-
-    case WM_MOUSEMOVE:
-	if (state) {
-	    omx = mx;
-	    omy = my;
-	    mx = LOWORD(lParam);
-	    my = HIWORD(lParam);
-	    /* Win32 is pretty braindead about the x, y position that
-	       it returns when the mouse is off the left or top edge
-	       of the window (due to them being unsigned). therefore,
-	       roll the Win32's 0..2^16 pointer co-ord range to the
-	       more amenable (and useful) 0..+/-2^15. */
-	    if(mx & 1 << 15) mx -= (1 << 16);
-	    if(my & 1 << 15) my -= (1 << 16);
-	    update(state, omx, mx, omy, my);
-	    PostMessage(hWnd, WM_PAINT, 0, 0);
-	}
-	return 0;
-
-    case WM_PALETTECHANGED:
-	if (hWnd == (HWND)wParam)
-	    break;
-	/* fall through to WM_QUERYNEWPALETTE */
-
-    case WM_QUERYNEWPALETTE:
-	if (hPalette) {
-	    UnrealizeObject(hPalette);
-	    SelectPalette(hDC, hPalette, FALSE);
-	    RealizePalette(hDC);
-	    return TRUE;
-	}
-	return FALSE;
-
-    case WM_CLOSE:
-	PostQuitMessage(0);
-	return 0;
-    }
 
     return DefWindowProc(hWnd, uMsg, wParam, lParam); 
 } 
