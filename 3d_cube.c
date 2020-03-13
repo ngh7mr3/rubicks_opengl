@@ -7,6 +7,7 @@
 #include <GL/gl.h>			/* OpenGL header file */
 #include <GL/glu.h>			/* OpenGL utilities header file */
 #include <stdio.h>
+#include <stdlib.h>
 
 
 enum { 
@@ -26,9 +27,13 @@ HPALETTE hPalette = 0;		/* custom palette (if needed) */
 GLfloat trans[3];			/* current translation */
 GLfloat rot[2];				/* current rotation */
 
+GLfloat glRandf() {
+	return (GLfloat)rand()/(GLfloat)RAND_MAX;
+}
+
 void drawCubeSide(GLint* a, GLint* b, GLint* c, GLint* d) {
 	glBegin(GL_TRIANGLE_STRIP);
-		glColor3f(0.0f, 1.0f, 0.0f);
+		glColor3f(glRandf(), glRandf(), glRandf());
 		glVertex3i(unpack(a));
 		glVertex3i(unpack(b));
 		glVertex3i(unpack(d));
