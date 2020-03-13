@@ -87,14 +87,12 @@ static void update(int state, int ox, int nx, int oy, int ny)
 }
 
 
-void
-init()
+void init()
 {
     glEnable(GL_DEPTH_TEST);
 }
 
-void
-reshape(int width, int height)
+void reshape(int width, int height)
 {
     glViewport(0, 0, width, height);
     glMatrixMode(GL_PROJECTION);
@@ -105,8 +103,7 @@ reshape(int width, int height)
     glTranslatef(0.0f, 0.0f, -3.0f);
 }
 
-void
-display()
+void display()
 {
     /* rotate cube*/
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
