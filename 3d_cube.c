@@ -8,6 +8,7 @@
 #include <GL/glu.h>			/* OpenGL utilities header file */
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #define unpack(x) x[0],x[1],x[2]
 #define clamp(x) x = x > 360.0f ? x-360.0f : x < -360.0f ? x+=360.0f : x
@@ -41,12 +42,20 @@ GLfloat glRandf() {
 
 void drawCubeSide(struct GLCubeSide* side) {
 	glBegin(GL_TRIANGLE_STRIP);
-		glColor3f(side->r, side->g, side->b);
+		glColor3f(fabsf(side->r), fabsf(side->g), fabsf(side->b));
 		glVertex3i(unpack(side->tl));
 		glVertex3i(unpack(side->tr));
 		glVertex3i(unpack(side->bl));
 		glVertex3i(unpack(side->br));
 	glEnd();
+}
+
+void processCubeColors() {
+	for (int i=0; i<6; i++) {
+		Sides[i].r += 0.001f; Sides[i].r -= Sides[i].r>1 ? 2.0f: 0.0f;
+		Sides[i].g += 0.001f; Sides[i].g -= Sides[i].g>1 ? 2.0f: 0.0f;
+		Sides[i].b += 0.001f; Sides[i].b -= Sides[i].b>1 ? 2.0f: 0.0f;
+	}
 }
 
 void initCube() {
@@ -110,12 +119,16 @@ display()
     glTranslatef(trans[0], trans[1], trans[2]);
     glRotatef(rot[0], 1.0f, 0.0f, 0.0f);
     glRotatef(rot[1], 0.0f, 1.0f, 0.0f);
+
 	/* init cube if it isn't*/
 	if (!CUBE_INITIALIZED) {initCube();}
+
 	/* process new colors, mod by 1 */
-	//processCubeColors();
+	processCubeColors();
+
 	/* draw updated sides of cube */
 	for (int i=0; i<6; i++) {drawCubeSide(&Sides[i]);}
+
     glPopMatrix();
     glFlush();
     SwapBuffers(hDC);			/* nop if singlebuffered */
