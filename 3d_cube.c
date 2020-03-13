@@ -105,6 +105,11 @@ display()
     
     glEnd(); */
 	drawCubeSide(CUBE[0], CUBE[1], CUBE[2], CUBE[3]);
+	drawCubeSide(CUBE[4], CUBE[5], CUBE[6], CUBE[7]);
+	drawCubeSide(CUBE[0], CUBE[4], CUBE[7], CUBE[3]);
+	drawCubeSide(CUBE[1], CUBE[5], CUBE[6], CUBE[2]);
+	drawCubeSide(CUBE[0], CUBE[4], CUBE[5], CUBE[1]);
+	drawCubeSide(CUBE[3], CUBE[7], CUBE[6], CUBE[2]);
     glPopMatrix();
     glFlush();
     SwapBuffers(hDC);			/* nop if singlebuffered */
