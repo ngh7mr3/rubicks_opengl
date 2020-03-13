@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define unpack(x) x[0],x[1],x[2]
+#define clamp(x) x = x > 360.0f ? x-360.0f : x < -360.0f ? x+=360.0f : x
 
 enum { 
     PAN = 1,				/* pan state bit */
@@ -16,11 +18,17 @@ enum {
     ZOOM				/* zoom state bit */
 };
 
-// front clockwise
-// back clockwise
+struct GLCubeSide {
+	GLint *tl, *tr, *br, *bl;
+	GLfloat r, g, b;
+};
+
+// dots front, clockwise
+// dots back, clockwise
 GLint CUBE[8][3] = {{1,-1,1},{1,1,1},{1,1,-1},{1,-1,-1},
-						{-1,-1,1},{-1,1,1},{-1,1,-1},{-1,-1,-1}};
-#define unpack(x) x[0],x[1],x[2]
+			{-1,-1,1},{-1,1,1},{-1,1,-1},{-1,-1,-1}};
+GLboolean CUBE_INITIALIZED = GL_FALSE;
+struct GLCubeSide Sides[6];
 
 HDC hDC;					/* device context */
 HPALETTE hPalette = 0;		/* custom palette (if needed) */
@@ -31,36 +39,46 @@ GLfloat glRandf() {
 	return (GLfloat)rand()/(GLfloat)RAND_MAX;
 }
 
-void drawCubeSide(GLint* a, GLint* b, GLint* c, GLint* d) {
+void drawCubeSide(struct GLCubeSide* side) {
 	glBegin(GL_TRIANGLE_STRIP);
-		glColor3f(glRandf(), glRandf(), glRandf());
-		glVertex3i(unpack(a));
-		glVertex3i(unpack(b));
-		glVertex3i(unpack(d));
-		glVertex3i(unpack(c));
+		glColor3f(side->r, side->g, side->b);
+		glVertex3i(unpack(side->tl));
+		glVertex3i(unpack(side->tr));
+		glVertex3i(unpack(side->bl));
+		glVertex3i(unpack(side->br));
 	glEnd();
+}
+
+void initCube() {
+	// Front, Back, Left, Right, Top, Bottom;
+	Sides[0] = (struct GLCubeSide){CUBE[0], CUBE[1], CUBE[2], CUBE[3], glRandf(), glRandf(), glRandf()};
+	Sides[1] = (struct GLCubeSide){CUBE[4], CUBE[5], CUBE[6], CUBE[7], glRandf(), glRandf(), glRandf()};
+	Sides[2] = (struct GLCubeSide){CUBE[0], CUBE[4], CUBE[7], CUBE[3], glRandf(), glRandf(), glRandf()};
+	Sides[3] = (struct GLCubeSide){CUBE[1], CUBE[5], CUBE[6], CUBE[2], glRandf(), glRandf(), glRandf()};
+	Sides[4] = (struct GLCubeSide){CUBE[0], CUBE[4], CUBE[5], CUBE[1], glRandf(), glRandf(), glRandf()};
+	Sides[5] = (struct GLCubeSide){CUBE[3], CUBE[7], CUBE[6], CUBE[2], glRandf(), glRandf(), glRandf()};
+	CUBE_INITIALIZED = GL_TRUE;
 }
 
 static void update(int state, int ox, int nx, int oy, int ny)
 {
-    int dx = ox - nx;
-    int dy = ny - oy;
+	int dx = ox - nx;
+	int dy = ny - oy;
 
     switch(state) {
-    case PAN:
-	trans[0] -= dx / 100.0f;
-	trans[1] -= dy / 100.0f;
-	break;
-    case ROTATE:
-	rot[0] += (dy * 180.0f) / 500.0f;
-	rot[1] -= (dx * 180.0f) / 500.0f;
-#define clamp(x) x = x > 360.0f ? x-360.0f : x < -360.0f ? x+=360.0f : x
-	clamp(rot[0]);
-	clamp(rot[1]);
-	break;
-    case ZOOM:
-	trans[2] -= (dx+dy) / 100.0f;
-	break;
+		case PAN:
+			trans[0] -= dx / 100.0f;
+			trans[1] -= dy / 100.0f;
+			break;
+		case ROTATE:
+			rot[0] += (dy * 180.0f) / 500.0f;
+			rot[1] -= (dx * 180.0f) / 500.0f;
+			clamp(rot[0]);
+			clamp(rot[1]);
+			break;
+		case ZOOM:
+			trans[2] -= (dx+dy) / 100.0f;
+			break;
     }
 }
 
@@ -86,35 +104,18 @@ reshape(int width, int height)
 void
 display()
 {
-    /* rotate a trian*/
+    /* rotate cube*/
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glPushMatrix();
     glTranslatef(trans[0], trans[1], trans[2]);
     glRotatef(rot[0], 1.0f, 0.0f, 0.0f);
     glRotatef(rot[1], 0.0f, 1.0f, 0.0f);
-	/*
-    glBegin(GL_TRIANGLES);
-
-#define TOP glIndexi(1); glColor3f(1.0f, 0.0f, 0.0f); glVertex3i(0, 1, 0)
-#define FR  glIndexi(2); glColor3f(1.0f, 1.0f, 0.0f); glVertex3i(1, -1, 1)
-#define FL  glIndexi(3); glColor3f(0.0f, 1.0f, 0.0f); glVertex3i(-1, -1, 1)
-#define BR  glIndexi(3); glColor3f(0.0f, 1.0f, 1.0f); glVertex3i(1, -1, -1)
-#define BL  glIndexi(2); glColor3f(0.0f, 0.0f, 1.0f); glVertex3i(-1, -1, -1)
-
-    TOP; FL; FR;
-    TOP; FR; BR;
-    TOP; BR; BL;
-    TOP; BL; FL;
-    FR; FL; BL;
-    BL; BR; FR;
-    
-    glEnd(); */
-	drawCubeSide(CUBE[0], CUBE[1], CUBE[2], CUBE[3]);
-	drawCubeSide(CUBE[4], CUBE[5], CUBE[6], CUBE[7]);
-	drawCubeSide(CUBE[0], CUBE[4], CUBE[7], CUBE[3]);
-	drawCubeSide(CUBE[1], CUBE[5], CUBE[6], CUBE[2]);
-	drawCubeSide(CUBE[0], CUBE[4], CUBE[5], CUBE[1]);
-	drawCubeSide(CUBE[3], CUBE[7], CUBE[6], CUBE[2]);
+	/* init cube if it isn't*/
+	if (!CUBE_INITIALIZED) {initCube();}
+	/* process new colors, mod by 1 */
+	//processCubeColors();
+	/* draw updated sides of cube */
+	for (int i=0; i<6; i++) {drawCubeSide(&Sides[i]);}
     glPopMatrix();
     glFlush();
     SwapBuffers(hDC);			/* nop if singlebuffered */
