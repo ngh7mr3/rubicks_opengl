@@ -30,6 +30,7 @@ HDC hDC;					/* device context */
 HPALETTE hPalette = 0;		/* custom palette (if needed) */
 GLfloat trans[3];			/* current translation */
 GLfloat rot[2];				/* current rotation */
+GLboolean animate = GL_TRUE;/* animate flag */
 
 GLfloat glRandf() {
 	return (GLfloat)rand()/(GLfloat)RAND_MAX;
@@ -47,9 +48,9 @@ void drawCubeSide(struct GLCubeSide* side) {
 
 void processCubeColors() {
 	for (int i=0; i<6; i++) {
-		Sides[i].r += 0.001f; Sides[i].r -= Sides[i].r>1 ? 2.0f: 0.0f;
-		Sides[i].g += 0.001f; Sides[i].g -= Sides[i].g>1 ? 2.0f: 0.0f;
-		Sides[i].b += 0.001f; Sides[i].b -= Sides[i].b>1 ? 2.0f: 0.0f;
+		Sides[i].r += 0.00001f; Sides[i].r -= Sides[i].r>1 ? 2.0f: 0.0f;
+		Sides[i].g += 0.00001f; Sides[i].g -= Sides[i].g>1 ? 2.0f: 0.0f;
+		Sides[i].b += 0.00001f; Sides[i].b -= Sides[i].b>1 ? 2.0f: 0.0f;
 	}
 }
 
@@ -68,6 +69,8 @@ static void update(int state, int ox, int nx, int oy, int ny)
 {
 	int dx = ox - nx;
 	int dy = ny - oy;
+
+	printf("Update animation: dx - %d, dy - %d\n", dx, dy);
 
     switch(state) {
 		case PAN:
@@ -109,6 +112,10 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glPushMatrix();
     glTranslatef(trans[0], trans[1], trans[2]);
+	if (animate) {
+		rot[0] += 0.002f;
+		rot[1] += 0.002f;
+	}
     glRotatef(rot[0], 1.0f, 0.0f, 0.0f);
     glRotatef(rot[1], 0.0f, 1.0f, 0.0f);
 
@@ -133,7 +140,6 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     static PAINTSTRUCT ps;
     static GLboolean left = GL_FALSE;	/* left button currently down? */
     static GLboolean right = GL_FALSE;	/* right button currently down? */
-	static GLboolean animate = GL_FALSE;/* animate flag */
     static GLuint state = 0;			/* mouse state flag */
     static int omx, omy, mx, my;
 
@@ -156,6 +162,7 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 					PostQuitMessage(0);
 					break;
 				case 32:
+					printf("animate - %d\n", animate);
 					animate ^= GL_TRUE;
 			}
 			return 0;
@@ -215,12 +222,6 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		case WM_CLOSE:
 			PostQuitMessage(0);
 			return 0;
-		
-		default:
-			if (animate) {
-				update(ROTATE, 2, 1, 5, 1);
-				PostMessage(hWnd, WM_PAINT, 0, 0);
-			}
 	}
 
     return DefWindowProc(hWnd, uMsg, wParam, lParam); 
@@ -384,7 +385,7 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
 	exit(0);
     }
 
-    hWnd = CreateOpenGLWindow("mouse", 0, 0, 256, 256, color, buffer);
+    hWnd = CreateOpenGLWindow("mouse", 200, 200, 800, 600, color, buffer);
     if (hWnd == NULL)
 	exit(1);
 
@@ -395,18 +396,27 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
     init();
 
     ShowWindow(hWnd, nCmdShow);
+	UpdateWindow(hWnd);
 
-    while(GetMessage(&msg, hWnd, 0, 0)) {
-	TranslateMessage(&msg);
-	DispatchMessage(&msg);
+    while (1) {
+	while(PeekMessage(&msg, hWnd, 0, 0, PM_NOREMOVE)) {
+	    if(GetMessage(&msg, hWnd, 0, 0)) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	    } else {
+		goto quit;
+	    }
+	}
+	display();
     }
 
-    wglMakeCurrent(NULL, NULL);
-    ReleaseDC(hWnd, hDC);
-    wglDeleteContext(hRC);
-    DestroyWindow(hWnd);
-    if (hPalette)
-	DeleteObject(hPalette);
+	quit:
+		wglMakeCurrent(NULL, NULL);
+		ReleaseDC(hWnd, hDC);
+		wglDeleteContext(hRC);
+		DestroyWindow(hWnd);
+		if (hPalette)
+			DeleteObject(hPalette);
 
-    return msg.wParam;
+    return 0;
 }
