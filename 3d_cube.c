@@ -5,8 +5,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define unpack(x) x[0],x[1],x[2]
 #define clamp(x) x = x > 360.0f ? x-360.0f : x < -360.0f ? x+=360.0f : x
+#define set_vec3(v,i,j,k,op) v.x op i; v.y op j; v.z op k;
+#define unpack(d) d.x, d.y, d.z
 
 enum { 
     PAN = 1,			/* pan state bit */
@@ -14,54 +15,231 @@ enum {
     ZOOM				/* zoom state bit */
 };
 
-struct GLCubeSide {
-	GLint *tl, *tr, *br, *bl;
+enum {
+	XMODE,
+	YMODE,
+	ZMODE
+};
+
+struct GLDot {
+	GLfloat x,y,z;
+};
+
+
+struct GLSide {
+	struct GLDot tl, tr, br, bl;
 	GLfloat r, g, b;
 };
 
-// dots front, clockwise
-// dots back, clockwise
-GLint CUBE[8][3] = {{1,-1,1},{1,1,1},{1,1,-1},{1,-1,-1},
-			{-1,-1,1},{-1,1,1},{-1,1,-1},{-1,-1,-1}};
-GLboolean CUBE_INITIALIZED = GL_FALSE;
-struct GLCubeSide Sides[6];
+struct GLCubeBlock {
+	struct GLDot base;
+	struct GLSide *sides[3];
+};
 
-HDC hDC;					/* device context */
-HPALETTE hPalette = 0;		/* custom palette (if needed) */
-GLfloat trans[3];			/* current translation */
-GLfloat rot[2];				/* current rotation */
-GLboolean animate = GL_TRUE;/* animate flag */
+struct GLCubeSide {
+	struct GLDot vec;
+	GLint mode;
+	struct GLCubeBlock *blocks[3][3];
+};
+
+struct GLCubeSide SIDES[6];
+struct GLDot CUBE[8] = {{-1,-1,-1},{1,-1,-1},{1,1,-1},{-1,1,-1},
+			{-1,-1,1},{1,-1,1},{1,1,1},{-1,1,1}};
+GLboolean CUBE_INITIALIZED = GL_FALSE;
+
+HDC hDC;						/* device context */
+HPALETTE hPalette = 0;			/* custom palette (if needed) */
+GLfloat trans[3];				/* current translation */
+GLfloat rot[2];					/* current rotation */
+GLboolean animate = GL_TRUE;	/* animate flag */
+
+void swap(struct GLCubeBlock *a, struct GLCubeBlock *b)
+{
+	struct GLCubeBlock t = *a;
+	*a = *b;
+	*b = t;
+}
+
+void transposeCubeMatrix(struct GLCubeBlock *mtrx[3][3][3])
+{
+	for (int i=0; i<3; i++) {
+		swap(mtrx[i][0][1],mtrx[i][1][0]);
+		swap(mtrx[i][0][2],mtrx[i][2][0]);
+		swap(mtrx[i][1][2],mtrx[i][2][1]);
+	}
+}
 
 GLfloat glRandf() {
 	return (GLfloat)rand()/(GLfloat)RAND_MAX;
 }
 
-void drawCubeSide(struct GLCubeSide* side) {
+void drawCubeSide(struct GLSide* side) {
 	glBegin(GL_TRIANGLE_STRIP);
 		glColor3f(fabsf(side->r), fabsf(side->g), fabsf(side->b));
-		glVertex3i(unpack(side->tl));
-		glVertex3i(unpack(side->tr));
-		glVertex3i(unpack(side->bl));
-		glVertex3i(unpack(side->br));
+		glVertex3f(unpack(side->tl));
+		glVertex3f(unpack(side->tr));
+		glVertex3f(unpack(side->bl));
+		glVertex3f(unpack(side->br));
 	glEnd();
 }
 
 void processCubeColors() {
+	// for (int i=0; i<6; i++) {
+	// 	Sides[i].r += 0.00001f; Sides[i].r -= Sides[i].r>1 ? 2.0f: 0.0f;
+	// 	Sides[i].g += 0.00001f; Sides[i].g -= Sides[i].g>1 ? 2.0f: 0.0f;
+	// 	Sides[i].b += 0.00001f; Sides[i].b -= Sides[i].b>1 ? 2.0f: 0.0f;
+	// }
+}
+
+void debug_print_sides()
+{
 	for (int i=0; i<6; i++) {
-		Sides[i].r += 0.00001f; Sides[i].r -= Sides[i].r>1 ? 2.0f: 0.0f;
-		Sides[i].g += 0.00001f; Sides[i].g -= Sides[i].g>1 ? 2.0f: 0.0f;
-		Sides[i].b += 0.00001f; Sides[i].b -= Sides[i].b>1 ? 2.0f: 0.0f;
+		printf("Side[%d]:\n", i);
+		printf("Vec norm: %f %f %f\n", SIDES[i].vec.x, SIDES[i].vec.y, SIDES[i].vec.z);
+		for (int j=0; j<3; j++) {
+			for (int z=0; z<3; z++) {
+				printf("POINT %f %f %f\n", unpack(SIDES[i].blocks[j][z]->base));
+			}
+		}
+		printf("\n");
 	}
 }
 
+struct GLSide *createSurface(GLint mode, GLfloat width, struct GLDot base, GLfloat r, GLfloat g, GLfloat b)
+{
+	struct GLSide *side = malloc(sizeof(struct GLSide));
+	side->r = r;
+	side->g = g;
+	side->b = b;
+	switch (mode)
+	{
+		case XMODE:
+			set_vec3(side->tl,base.x, base.y-width/2, base.z+width/2, =);
+			set_vec3(side->tr,base.x, base.y+width/2, base.z+width/2, =);
+			set_vec3(side->br,base.x, base.y+width/2, base.z-width/2, =);
+			set_vec3(side->bl,base.x, base.y-width/2, base.z-width/2, =); 
+			break;
+		case YMODE:
+			set_vec3(side->tl,base.x-width/2, base.y, base.z+width/2, =);
+			set_vec3(side->tr,base.x+width/2, base.y, base.z+width/2, =);
+			set_vec3(side->br,base.x+width/2, base.y, base.z-width/2, =);
+			set_vec3(side->bl,base.x-width/2, base.y, base.z-width/2, =);
+			break;
+		case ZMODE:
+			set_vec3(side->tl,base.x-width/2, base.y+width/2, base.z, =);
+			set_vec3(side->tr,base.x+width/2, base.y+width/2, base.z, =);
+			set_vec3(side->br,base.x+width/2, base.y-width/2, base.z, =);
+			set_vec3(side->bl,base.x-width/2, base.y-width/2, base.z, =);
+			break;
+	}
+	return side;
+}
+
+void initCubeSide(struct GLCubeSide *side, GLfloat width, GLfloat r, GLfloat g, GLfloat b)
+{
+	printf("Initializing surface cube side (%f, %f, %f):\n", unpack(side->vec));
+	for (int i=0; i<3; i++) {
+		for (int j=0; j<3; j++) {
+			struct GLDot surfaceBase;
+			surfaceBase.x = side->blocks[i][j]->base.x + side->vec.x * width/2;
+			surfaceBase.y = side->blocks[i][j]->base.y + side->vec.y * width/2;
+			surfaceBase.z = side->blocks[i][j]->base.z + side->vec.z * width/2;
+			side->blocks[i][j]->sides[side->mode] = createSurface(side->mode, width, surfaceBase, r, g, b);
+			printf("Initialized block (%f, %f, %f)\n", unpack(side->blocks[i][j]->base));
+			printf("with  surface tl-(%f,%f,%f)\ntr-(%f,%f,%f)\nbr-(%f,%f,%f)\nbl-(%f,%f,%f)\n\n", unpack(side->blocks[i][j]->sides[side->mode]->tl),
+																			unpack(side->blocks[i][j]->sides[side->mode]->tr),
+																			unpack(side->blocks[i][j]->sides[side->mode]->br),
+																			unpack(side->blocks[i][j]->sides[side->mode]->bl));
+		}
+	}
+	printf("\n");
+}
+
 void initCube() {
-	// Front, Back, Left, Right, Top, Bottom;
-	Sides[0] = (struct GLCubeSide){CUBE[0], CUBE[1], CUBE[2], CUBE[3], glRandf(), glRandf(), glRandf()};
-	Sides[1] = (struct GLCubeSide){CUBE[4], CUBE[5], CUBE[6], CUBE[7], glRandf(), glRandf(), glRandf()};
-	Sides[2] = (struct GLCubeSide){CUBE[0], CUBE[4], CUBE[7], CUBE[3], glRandf(), glRandf(), glRandf()};
-	Sides[3] = (struct GLCubeSide){CUBE[1], CUBE[5], CUBE[6], CUBE[2], glRandf(), glRandf(), glRandf()};
-	Sides[4] = (struct GLCubeSide){CUBE[0], CUBE[4], CUBE[5], CUBE[1], glRandf(), glRandf(), glRandf()};
-	Sides[5] = (struct GLCubeSide){CUBE[3], CUBE[7], CUBE[6], CUBE[2], glRandf(), glRandf(), glRandf()};
+	// Let's get all possible GLCubeBlocks with the base from our main rubicks cube 0,0,0
+
+	struct GLCubeBlock *mtrx[3][3][3];
+	printf("Initializing small cubes' base\n");
+	for (int y=-1; y<2; y++) {
+		for (int z=-1; z<2; z++) {
+			for (int x=-1; x<2; x++){
+				printf("Got point %d %d %d\n", y, z, x);
+				struct GLCubeBlock *b = malloc(sizeof(struct GLCubeBlock));
+				b->base.x = (GLfloat)x; b->base.y = (GLfloat)y; b->base.z = (GLfloat)z;
+				mtrx[y+1][z+1][x+1] = b;
+			}
+		}
+	}
+
+	// Now we need to combine sides of our rubick's cube
+	// TOP and BOTTOM
+	// mtrx[0] and mtrx[2] <=> SIDES[0] and SIDES[1]
+	int s = 0;
+	SIDES[0].mode = YMODE;
+	SIDES[1].mode = YMODE;
+	set_vec3(SIDES[0].vec, 0, -1, 0, =);
+	set_vec3(SIDES[1].vec, 0, 1, 0, =);
+	for (int k=0; k<3; k+=2) {
+		for (int i=0; i<3; i++) {
+			for (int j=0; j<3; j++) {
+				SIDES[s].blocks[i][j] = mtrx[k][i][j];
+			}
+		}
+		s++;
+	}
+	
+	// FRONT and BACK
+	// mtrx[...][0][...] and mtrx[...][2][...] <=> SIDES[2] and SIDES[3]
+	SIDES[2].mode = ZMODE;
+	SIDES[3].mode = ZMODE;
+	set_vec3(SIDES[2].vec, 0, 0, -1, =);
+	set_vec3(SIDES[3].vec, 0, 0, 1, =); 
+	for (int k=0; k<3; k+=2) {
+		for (int i=0; i<3; i++) {
+			for (int j=0; j<3; j++) {
+				SIDES[s].blocks[i][j] = mtrx[i][j][k];
+			}
+		}
+		s++;
+	}
+
+	// LEFT and RIGHT
+	// (after matrix transpose)
+	// mtrx[...][0][...] and mtrx[...][2][...] <=> SIDES[4] and SIDES[5]
+	SIDES[4].mode = XMODE;
+	SIDES[5].mode = XMODE;
+	set_vec3(SIDES[4].vec, -1, 0, 0, =);
+	set_vec3(SIDES[5].vec, 1, 0, 0, =);
+	transposeCubeMatrix(mtrx);
+	for (int k=0; k<3; k+=2) {
+		for (int i=0; i<3; i++) {
+			for (int j=0; j<3; j++) {
+				SIDES[s].blocks[i][j] = mtrx[i][k][j];
+			}
+		}
+		s++;
+	}
+
+	debug_print_sides();
+
+	// Initializing surface for each block on each cube side
+	initCubeSide(&SIDES[0], 0.8, 1.0, 0.0, 0.0); // Red side
+	initCubeSide(&SIDES[1], 0.8, 0.0, 1.0, 0.0); // Green side
+	// ???
+	initCubeSide(&SIDES[2], 0.8, 0.0, 0.0, 1.0); // Blue side
+	initCubeSide(&SIDES[3], 0.8, 1.0, 1.0, 0.0); // Yellow side
+	// ???
+	initCubeSide(&SIDES[4], 0.8, 1.0, 0.0, 1.0); // Purple side
+	initCubeSide(&SIDES[5], 0.8, 1.0, 1.0, 1.0); // White side
+
+	// Let's initialize list for each side
+	// // Init render list
+	// glNewList(1, GL_COMPILE);
+	// for (int i=0; i<6; i++) {
+	// 	drawCubeSide(&Sides[i]);
+	// }
+	// glEndList();
+
 	CUBE_INITIALIZED = GL_TRUE;
 }
 
@@ -112,21 +290,29 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glPushMatrix();
     glTranslatef(trans[0], trans[1], trans[2]);
-	if (animate) {
-		rot[0] += 0.002f;
-		rot[1] += 0.002f;
-	}
+	
     glRotatef(rot[0], 1.0f, 0.0f, 0.0f);
     glRotatef(rot[1], 0.0f, 1.0f, 0.0f);
 
 	/* init cube if it isn't*/
 	if (!CUBE_INITIALIZED) {initCube();}
 
-	/* process new colors, mod by 1 */
-	processCubeColors();
+	/* process animation */
+	if (animate) {
+		rot[0] += 0.002f;
+		rot[1] += 0.002f;
+		processCubeColors();
+	}
 
-	/* draw updated sides of cube */
-	for (int i=0; i<6; i++) {drawCubeSide(&Sides[i]);}
+	/* draw updated sides of cube, call render list 1 */
+	//glCallList(1);
+	for (int i=0; i<6; i++) {
+		for (int j=0; j<3; j++) {
+			for (int k=0; k<3; k++) {
+				drawCubeSide(SIDES[i].blocks[j][k]->sides[SIDES[i].mode]);
+			}
+		}
+	}
 
     glPopMatrix();
     glFlush();
@@ -387,7 +573,7 @@ WinMain(HINSTANCE hCurrentInst, HINSTANCE hPreviousInst,
 
     hWnd = CreateOpenGLWindow("mouse", 200, 200, 800, 600, color, buffer);
     if (hWnd == NULL)
-	exit(1);
+		exit(1);
 
     hDC = GetDC(hWnd);
     hRC = wglCreateContext(hDC);
